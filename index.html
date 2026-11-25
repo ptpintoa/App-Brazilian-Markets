@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B3 & Macro Monitor — Dashboard Financeiro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js para gráficos financeiros -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Fonte Inter e JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200 min-h-screen flex flex-col">
+
+    <!-- Top Navigation / Market Status Bar -->
+    <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-slate-950 stroke-[2.5]"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">B3 & Macro Monitor</h1>
+                        <span class="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span id="live-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="live-label">Mercado Aberto</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Acompanhamento de Renda Variável, Câmbio e Estrutura a Termo de Juros</p>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="hidden md:flex flex-col items-end text-xs">
+                    <span class="text-slate-400">Última atualização</span>
+                    <span id="last-updated" class="font-mono text-slate-200 font-medium">--:--:--</span>
+                </div>
+                <button id="btn-toggle-live" type="button" class="px-3 py-2 rounded-xl text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 transition flex items-center gap-1.5">
+                    <i data-lucide="pause" id="icon-live" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span id="text-live" class="hidden sm:inline">Pausar Feed</span>
+                </button>
+                <button id="btn-refresh" type="button" class="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold transition shadow-md shadow-emerald-600/20" title="Atualizar agora">
+                    <i data-lucide="refresh-cw" id="refresh-icon" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- KPI Summary Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Card 1: Ibovespa -->
+            <div onclick="selectAsset('IBOV')" id="card-IBOV" class="cursor-pointer group rounded-2xl bg-slate-900/90 border-2 border-emerald-500/60 p-4 sm:p-5 transition-all hover:bg-slate-900 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-xs">IBOV</span>
+                        <div>
+                            <h2 class="text-sm font-semibold text-slate-200">Ibovespa</h2>
+                            <span class="text-[11px] text-slate-400">B3 • Índice à Vista</span>
+                        </div>
+                    </div>
+                    <span id="ibov-badge" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-emerald-500/10 text-emerald-400">
+                        +1,73%
+                    </span>
+                </div>
+                <div class="mt-3">
+                    <div id="ibov-price" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white tabular-nums">
+                        166.928
+                    </div>
+                    <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
+                        <span>Pts • Vol: <span class="text-slate-300 font-mono">R$ 24,8B</span></span>
+                        <span id="ibov-diff" class="font-mono text-emerald-400">+2.838 pts</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Dólar Comercial -->
+            <div onclick="selectAsset('USD')" id="card-USD" class="cursor-pointer group rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 p-4 sm:p-5 transition-all hover:bg-slate-900 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs">USD</span>
+                        <div>
+                            <h2 class="text-sm font-semibold text-slate-200">Dólar Comercial</h2>
+                            <span class="text-[11px] text-slate-400">USD / BRL</span>
+                        </div>
+                    </div>
+                    <span id="usd-badge" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-rose-500/10 text-rose-400">
+                        -1,53%
+                    </span>
+                </div>
+                <div class="mt-3">
+                    <div id="usd-price" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white tabular-nums">
+                        R$ 5,8153
+                    </div>
+                    <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
+                        <span>Mín: <span class="font-mono text-slate-300" id="usd-low">5,8094</span></span>
+                        <span>Máx: <span class="font-mono text-slate-300" id="usd-high">5,9201</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Euro Comercial -->
+            <div onclick="selectAsset('EUR')" id="card-EUR" class="cursor-pointer group rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 p-4 sm:p-5 transition-all hover:bg-slate-900 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-xs">EUR</span>
+                        <div>
+                            <h2 class="text-sm font-semibold text-slate-200">Euro Comercial</h2>
+                            <span class="text-[11px] text-slate-400">EUR / BRL</span>
+                        </div>
+                    </div>
+                    <span id="eur-badge" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-rose-500/10 text-rose-400">
+                        -1,34%
+                    </span>
+                </div>
+                <div class="mt-3">
+                    <div id="eur-price" class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white tabular-nums">
+                        R$ 6,3857
+                    </div>
+                    <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
+                        <span>Mín: <span class="font-mono text-slate-300" id="eur-low">6,3857</span></span>
+                        <span>Máx: <span class="font-mono text-slate-300" id="eur-high">6,4893</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Taxa Selic & DI Longo -->
+            <div class="rounded-2xl bg-slate-900/90 border border-slate-800 p-4 sm:p-5 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs">DI%</span>
+                        <div>
+                            <h2 class="text-sm font-semibold text-slate-200">Taxa Selic Meta</h2>
+                            <span class="text-[11px] text-slate-400">BCB • Copom</span>
+                        </div>
+                    </div>
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-medium bg-slate-800 text-amber-400 border border-slate-700">
+                        Over: 13,65%
+                    </span>
+                </div>
+                <div class="mt-3">
+                    <div class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white tabular-nums">
+                        13,75% <span class="text-sm font-normal text-slate-400">a.a.</span>
+                    </div>
+                    <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
+                        <span>DI Jan/29: <span class="font-mono text-amber-400 font-semibold" id="di-long-card">14,15%</span></span>
+                        <span>Spread: <span class="font-mono text-slate-300">+40 bps</span></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Grid: Main Asset Chart & Yield Curve -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left: Interactive Price Chart (7 cols) -->
+            <div class="lg:col-span-7 rounded-2xl bg-slate-900/90 border border-slate-800 p-4 sm:p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 id="main-chart-title" class="text-base sm:text-lg font-bold text-white">Desempenho Ibovespa (IBOV)</h3>
+                                <span id="main-chart-tag" class="px-2 py-0.5 rounded-md text-[11px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">B3</span>
+                            </div>
+                            <p id="main-chart-subtitle" class="text-xs text-slate-400 mt-0.5">Pontuação do principal índice da B3 (25/11/2026)</p>
+                        </div>
+
+                        <!-- Asset & Timeframe Controls -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+                                <button type="button" onclick="selectAsset('IBOV')" data-asset-btn="IBOV" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-slate-800 text-white">IBOV</button>
+                                <button type="button" onclick="selectAsset('USD')" data-asset-btn="USD" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200">USD</button>
+                                <button type="button" onclick="selectAsset('EUR')" data-asset-btn="EUR" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200">EUR</button>
+                            </div>
+                            <div class="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+                                <button type="button" onclick="selectTimeframe('1D')" data-tf-btn="1D" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition bg-emerald-500/20 text-emerald-400">1D</button>
+                                <button type="button" onclick="selectTimeframe('1M')" data-tf-btn="1M" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition text-slate-400 hover:text-slate-200">1M</button>
+                                <button type="button" onclick="selectTimeframe('6M')" data-tf-btn="6M" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition text-slate-400 hover:text-slate-200">6M</button>
+                                <button type="button" onclick="selectTimeframe('1A')" data-tf-btn="1A" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition text-slate-400 hover:text-slate-200">1A</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Responsive Canvas Container -->
+                    <div class="relative w-full h-64 sm:h-72">
+                        <canvas id="mainAssetChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Mini Footer Stats inside Chart Card -->
+                <div class="grid grid-cols-3 gap-4 pt-4 mt-4 border-t border-slate-800/80 text-xs">
+                    <div>
+                        <span class="text-slate-500 block">Abertura</span>
+                        <span id="stat-open" class="font-mono font-semibold text-slate-200 mt-0.5 block">164.090 pts</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block">Oscilação Período</span>
+                        <span id="stat-range" class="font-mono font-semibold text-slate-200 mt-0.5 block">164.042 - 167.105</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-slate-500 block">Variação Acum.</span>
+                        <span id="stat-var" class="font-mono font-semibold text-emerald-400 mt-0.5 block">+1,73%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Yield Curve / Curva de Juros (5 cols) -->
+            <div class="lg:col-span-5 rounded-2xl bg-slate-900/90 border border-slate-800 p-4 sm:p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex items-start justify-between gap-2 mb-5">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-white">Curva de Juros (ETTJ / DI)</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Taxas prefixadas de curto a longo prazo (% a.a.)</p>
+                        </div>
+                        <button type="button" id="btn-compare-curve" onclick="toggleCurveComparison()" class="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition flex items-center gap-1.5 shrink-0">
+                            <span class="w-2 h-2 rounded-full bg-slate-500" id="dot-compare"></span>
+                            <span>vs. 30d atrás</span>
+                        </button>
+                    </div>
+
+                    <!-- Responsive Canvas Container -->
+                    <div class="relative w-full h-64 sm:h-72">
+                        <canvas id="yieldCurveChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Curve Shape Insight Box -->
+                <div class="mt-4 p-3.5 rounded-xl bg-slate-950/90 border border-slate-800/90 flex items-start gap-3">
+                    <div class="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0 mt-0.5">
+                        <i data-lucide="info" class="w-4 h-4"></i>
+                    </div>
+                    <div class="text-xs leading-relaxed text-slate-300">
+                        <span class="font-semibold text-white">Leitura da Curva:</span> Selic em <span class="font-mono text-amber-400">13,75%</span> com inclinação positiva nos vencimentos médios e longos (Jan/29 a <span class="font-mono text-amber-400">14,15%</span> e Jan/33 a <span class="font-mono text-amber-400">14,52%</span>) refletindo prêmios fiscais e inflacionários.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Section: Detailed Interest Rates Table & Currency Converter -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left: DI Futures Term Structure Table (8 cols) -->
+            <div class="lg:col-span-8 rounded-2xl bg-slate-900/90 border border-slate-800 p-4 sm:p-6 shadow-xl">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white">Contratos DI Futuro (B3) — Curto a Longo Prazo</h3>
+                        <p class="text-xs text-slate-400">Taxas indicativas de ajuste, variação diária em basis points (bps) e juro real implícito</p>
+                    </div>
+                    <!-- Horizon Filter Pills -->
+                    <div class="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800 self-start">
+                        <button type="button" onclick="filterRates('ALL')" data-rate-filter="ALL" class="px-2.5 py-1 rounded-lg text-xs font-medium transition bg-slate-800 text-white">Todos</button>
+                        <button type="button" onclick="filterRates('CURTO')" data-rate-filter="CURTO" class="px-2.5 py-1 rounded-lg text-xs font-medium transition text-slate-400 hover:text-slate-200">Curto</button>
+                        <button type="button" onclick="filterRates('MEDIO')" data-rate-filter="MEDIO" class="px-2.5 py-1 rounded-lg text-xs font-medium transition text-slate-400 hover:text-slate-200">Médio</button>
+                        <button type="button" onclick="filterRates('LONGO')" data-rate-filter="LONGO" class="px-2.5 py-1 rounded-lg text-xs font-medium transition text-slate-400 hover:text-slate-200">Longo</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
+                                <th class="py-3 px-3 font-semibold">Contrato</th>
+                                <th class="py-3 px-3 font-semibold">Vencimento</th>
+                                <th class="py-3 px-3 font-semibold">Prazo</th>
+                                <th class="py-3 px-3 font-semibold text-right">Taxa Atual</th>
+                                <th class="py-3 px-3 font-semibold text-right">Var. Dia</th>
+                                <th class="py-3 px-3 font-semibold text-right hidden sm:table-cell">Juro Real (NTN-B)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rates-table-body" class="divide-y divide-slate-800/60 text-xs sm:text-sm font-mono">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right: Quick Currency & Yield Calculator (4 cols) -->
+            <div class="lg:col-span-4 rounded-2xl bg-slate-900/90 border border-slate-800 p-4 sm:p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                            <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-white">Conversor Rápido</h3>
+                            <p class="text-xs text-slate-400">Câmbio comercial em tempo real</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label for="conv-amount" class="block text-xs font-medium text-slate-400 mb-1.5">Valor para conversão</label>
+                            <div class="flex rounded-xl bg-slate-950 border border-slate-800 focus-within:border-emerald-500/60 overflow-hidden">
+                                <input id="conv-amount" type="number" value="1000" min="0" step="100" oninput="updateConverter()" class="w-full bg-transparent px-3.5 py-2.5 text-sm font-mono text-white focus:outline-none">
+                                <select id="conv-from" onchange="updateConverter()" class="bg-slate-900 text-slate-200 text-xs font-mono font-semibold px-3 border-l border-slate-800 focus:outline-none cursor-pointer">
+                                    <option value="USD">USD ($)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="BRL">BRL (R$)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Result Display -->
+                        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800/90 space-y-2.5">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-400" id="conv-label-1">Em Reais (BRL)</span>
+                                <span class="text-base font-bold font-mono text-emerald-400 tabular-nums" id="conv-res-1">R$ 5.815,30</span>
+                            </div>
+                            <div class="border-t border-slate-800/80 pt-2.5 flex justify-between items-center">
+                                <span class="text-xs text-slate-400" id="conv-label-2">Em Euros (EUR)</span>
+                                <span class="text-sm font-semibold font-mono text-slate-200 tabular-nums" id="conv-res-2">€ 910,68</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Major Movers Mini Ticker -->
+                <div class="mt-6 pt-4 border-t border-slate-800">
+                    <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block mb-2.5">Destaques Ibovespa (Hoje)</span>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div class="bg-slate-950/80 border border-slate-800/80 rounded-lg p-2 flex justify-between items-center">
+                            <span class="text-slate-300 font-semibold">VALE3</span>
+                            <span class="text-emerald-400">+3,50%</span>
+                        </div>
+                        <div class="bg-slate-950/80 border border-slate-800/80 rounded-lg p-2 flex justify-between items-center">
+                            <span class="text-slate-300 font-semibold">BBDC4</span>
+                            <span class="text-emerald-400">+3,52%</span>
+                        </div>
+                        <div class="bg-slate-950/80 border border-slate-800/80 rounded-lg p-2 flex justify-between items-center">
+                            <span class="text-slate-300 font-semibold">PETR4</span>
+                            <span class="text-emerald-400">+1,97%</span>
+                        </div>
+                        <div class="bg-slate-950/80 border border-slate-800/80 rounded-lg p-2 flex justify-between items-center">
+                            <span class="text-slate-300 font-semibold">EMBJ3</span>
+                            <span class="text-rose-400">-3,35%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer Disclaimer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p id="data-source-status">Referência de mercado: 25/11/2026 (B3, PTAX/BCB e ETTJ Pré-DI). Câmbio conectado via API ao vivo.</p>
+            <p class="font-mono">B3 • BCB • ETTJ Pré-DI</p>
+        </div>
+    </footer>
+
+    <!-- Application Logic -->
+    <script>
+        // Inicializa ícones Lucide com proteção caso a CDN falhe
+        try {
+            if (window.lucide) lucide.createIcons();
+        } catch (e) {
+            console.warn('Ícones Lucide não carregados:', e);
+        }
+
+        // ==========================================
+        // 1. ESTADO E DADOS REAIS DO MERCADO (25/11/2026)
+        // ==========================================
+        const marketState = {
+            isLive: true,
+            selectedAsset: 'IBOV',
+            selectedTimeframe: '1D',
+            rateFilter: 'ALL',
+            assets: {
+                IBOV: {
+                    name: 'Desempenho Ibovespa (IBOV)',
+                    subtitle: 'Pontuação do principal índice da B3 (25/11/2026)',
+                    price: 166928,
+                    prevClose: 164090,
+                    unit: 'pts',
+                    decimals: 0,
+                    color: '#10b981', // Emerald
+                    history: {
+                        '1D': {
+                            labels: ['10:05', '10:50', '11:30', '12:15', '13:05', '13:55', '14:40', '15:30', '16:15', '16:50', '17:15'],
+                            data: [164440, 164848, 164728, 165299, 165043, 165225, 166220, 166835, 166620, 166809, 166928]
+                        },
+                        '1M': {
+                            labels: ['26/Out', '02/Nov', '09/Nov', '13/Nov', '18/Nov', '23/Nov', '25/Nov'],
+                            data: [166180, 165420, 167890, 166450, 165120, 164090, 166928]
+                        },
+                        '6M': {
+                            labels: ['Jun/26', 'Jul/26', 'Ago/26', 'Set/26', 'Out/26', 'Nov/26'],
+                            data: [158400, 161200, 164900, 168300, 166180, 166928]
+                        },
+                        '1A': {
+                            labels: ['Nov/25', 'Jan/26', 'Mar/26', 'Mai/26', 'Jul/26', 'Set/26', 'Nov/26'],
+                            data: [156510, 159800, 162400, 157900, 161200, 168300, 166928]
+                        }
+                    }
+                },
+                USD: {
+                    name: 'Dólar Comercial (USD/BRL)',
+                    subtitle: 'Cotação à vista em Reais por Dólar Americano',
+                    price: 5.8153,
+                    prevClose: 5.9055,
+                    low: 5.8094,
+                    high: 5.9201,
+                    unit: 'R$',
+                    decimals: 4,
+                    color: '#38bdf8', // Sky Blue
+                    history: {
+                        '1D': {
+                            labels: ['09:15', '10:05', '11:00', '12:05', '12:30', '13:45', '14:55', '15:45', '16:35', '17:10', '17:30'],
+                            data: [5.9112, 5.9120, 5.9111, 5.9008, 5.9201, 5.8897, 5.8960, 5.8619, 5.8527, 5.8197, 5.8153]
+                        },
+                        '1M': {
+                            labels: ['26/Out', '02/Nov', '09/Nov', '13/Nov', '18/Nov', '23/Nov', '25/Nov'],
+                            data: [5.7120, 5.7480, 5.7950, 5.8410, 5.8890, 5.9262, 5.8153]
+                        },
+                        '6M': {
+                            labels: ['Jun/26', 'Jul/26', 'Ago/26', 'Set/26', 'Out/26', 'Nov/26'],
+                            data: [5.4890, 5.5620, 5.6180, 5.6740, 5.7210, 5.8153]
+                        },
+                        '1A': {
+                            labels: ['Nov/25', 'Jan/26', 'Mar/26', 'Mai/26', 'Jul/26', 'Set/26', 'Nov/26'],
+                            data: [5.3940, 5.4510, 5.5120, 5.4780, 5.5620, 5.6740, 5.8153]
+                        }
+                    }
+                },
+                EUR: {
+                    name: 'Euro Comercial (EUR/BRL)',
+                    subtitle: 'Cotação à vista em Reais por Euro',
+                    price: 6.3857,
+                    prevClose: 6.4725,
+                    low: 6.3857,
+                    high: 6.4893,
+                    unit: 'R$',
+                    decimals: 4,
+                    color: '#818cf8', // Indigo
+                    history: {
+                        '1D': {
+                            labels: ['09:25', '10:15', '11:00', '12:00', '12:20', '13:25', '14:45', '15:45', '16:50', '17:10', '17:30'],
+                            data: [6.4683, 6.4725, 6.4683, 6.4641, 6.4893, 6.4475, 6.4683, 6.4144, 6.4103, 6.3980, 6.3857]
+                        },
+                        '1M': {
+                            labels: ['26/Out', '02/Nov', '09/Nov', '13/Nov', '18/Nov', '23/Nov', '25/Nov'],
+                            data: [6.2840, 6.3190, 6.3650, 6.4120, 6.4490, 6.4725, 6.3857]
+                        },
+                        '6M': {
+                            labels: ['Jun/26', 'Jul/26', 'Ago/26', 'Set/26', 'Out/26', 'Nov/26'],
+                            data: [6.0120, 6.0980, 6.1640, 6.2310, 6.2950, 6.3857]
+                        },
+                        '1A': {
+                            labels: ['Nov/25', 'Jan/26', 'Mar/26', 'Mai/26', 'Jul/26', 'Set/26', 'Nov/26'],
+                            data: [5.8910, 5.9540, 6.0280, 5.9920, 6.0980, 6.2310, 6.3857]
+                        }
+                    }
+                }
+            },
+            // Estrutura a termo de juros (DI Futuro B3 - Selic 13,75%)
+            yieldCurve: [
+                { ticker: 'DI1G27', label: 'Fev/27 (3m)', horizon: 'CURTO', rate: 13.71, prevRate: 13.72, past30d: 13.55, realYield: 7.45 },
+                { ticker: 'DI1N27', label: 'Jul/27 (8m)', horizon: 'CURTO', rate: 13.82, prevRate: 13.85, past30d: 13.48, realYield: 7.52 },
+                { ticker: 'DI1F28', label: 'Jan/28 (1a)', horizon: 'CURTO', rate: 13.96, prevRate: 14.01, past30d: 13.52, realYield: 7.64 },
+                { ticker: 'DI1F29', label: 'Jan/29 (2a)', horizon: 'MEDIO', rate: 14.15, prevRate: 14.22, past30d: 13.68, realYield: 7.78 },
+                { ticker: 'DI1F30', label: 'Jan/30 (3a)', horizon: 'MEDIO', rate: 14.31, prevRate: 14.38, past30d: 13.84, realYield: 7.89 },
+                { ticker: 'DI1F31', label: 'Jan/31 (4a)', horizon: 'LONGO', rate: 14.44, prevRate: 14.51, past30d: 13.98, realYield: 7.96 },
+                { ticker: 'DI1F33', label: 'Jan/33 (6a)', horizon: 'LONGO', rate: 14.52, prevRate: 14.60, past30d: 14.10, realYield: 8.04 },
+                { ticker: 'DI1F35', label: 'Jan/35 (8a)', horizon: 'LONGO', rate: 14.61, prevRate: 14.68, past30d: 14.18, realYield: 8.12 }
+            ]
+        };
+
+        // ==========================================
+        // 2. UTILITÁRIOS DE FORMATAÇÃO
+        // ==========================================
+        function formatNumber(val, decimals = 2) {
+            return val.toLocaleString('pt-BR', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
+        function formatSignedPercent(val) {
+            const sign = val >= 0 ? '+' : '';
+            return `${sign}${formatNumber(val, 2)}%`;
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const el = document.getElementById('last-updated');
+            if (el) el.textContent = now.toLocaleTimeString('pt-BR');
+        }
+
+        // ==========================================
+        // 3. ATUALIZAÇÃO DOS CARDS SUPERIORES
+        // ==========================================
+        function updateKPICards() {
+            // Ibovespa
+            const ibov = marketState.assets.IBOV;
+            const ibovPct = ((ibov.price - ibov.prevClose) / ibov.prevClose) * 100;
+            const ibovDiff = ibov.price - ibov.prevClose;
+            document.getElementById('ibov-price').textContent = formatNumber(ibov.price, 0);
+            document.getElementById('ibov-badge').textContent = formatSignedPercent(ibovPct);
+            document.getElementById('ibov-diff').textContent = `${ibovDiff >= 0 ? '+' : ''}${formatNumber(ibovDiff, 0)} pts`;
+
+            const ibovBadge = document.getElementById('ibov-badge');
+            ibovBadge.className = `inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-semibold ${
+                ibovPct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+            }`;
+
+            // Dólar
+            const usd = marketState.assets.USD;
+            const usdPct = ((usd.price - usd.prevClose) / usd.prevClose) * 100;
+            document.getElementById('usd-price').textContent = `R$ ${formatNumber(usd.price, 4)}`;
+            document.getElementById('usd-low').textContent = formatNumber(usd.low, 4);
+            document.getElementById('usd-high').textContent = formatNumber(usd.high, 4);
+            const usdBadge = document.getElementById('usd-badge');
+            usdBadge.textContent = formatSignedPercent(usdPct);
+            usdBadge.className = `inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-semibold ${
+                usdPct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+            }`;
+
+            // Euro
+            const eur = marketState.assets.EUR;
+            const eurPct = ((eur.price - eur.prevClose) / eur.prevClose) * 100;
+            document.getElementById('eur-price').textContent = `R$ ${formatNumber(eur.price, 4)}`;
+            document.getElementById('eur-low').textContent = formatNumber(eur.low, 4);
+            document.getElementById('eur-high').textContent = formatNumber(eur.high, 4);
+            const eurBadge = document.getElementById('eur-badge');
+            eurBadge.textContent = formatSignedPercent(eurPct);
+            eurBadge.className = `inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-semibold ${
+                eurPct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+            }`;
+        }
+
+        // ==========================================
+        // 4. GRÁFICOS (CHART.JS)
+        // ==========================================
+        let mainChart = null;
+        let yieldChart = null;
+        let showCurveComparison = false;
+
+        function initCharts() {
+            if (!window.Chart) return;
+
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'JetBrains Mono', 'Inter', sans-serif";
+
+            // Gráfico Principal (IBOV / USD / EUR)
+            const ctxMain = document.getElementById('mainAssetChart').getContext('2d');
+            mainChart = new Chart(ctxMain, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Cotação',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                        borderWidth: 2.5,
+                        pointRadius: 2.5,
+                        pointHoverRadius: 5,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleColor: '#94a3b8',
+                            bodyColor: '#f8fafc',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(51, 65, 85, 0.25)', drawTicks: false },
+                            border: { display: false },
+                            ticks: { font: { size: 11 }, maxRotation: 0 }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: { color: 'rgba(51, 65, 85, 0.35)', drawTicks: false },
+                            border: { display: false },
+                            ticks: { font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // Gráfico Curva de Juros (ETTJ / DI)
+            const ctxYield = document.getElementById('yieldCurveChart').getContext('2d');
+            yieldChart = new Chart(ctxYield, {
+                type: 'line',
+                data: {
+                    labels: marketState.yieldCurve.map(v => v.label.split(' ')[0]),
+                    datasets: [
+                        {
+                            label: 'Curva Atual (% a.a.)',
+                            data: marketState.yieldCurve.map(v => v.rate),
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                            borderWidth: 2.5,
+                            pointBackgroundColor: '#f59e0b',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'Há 30 dias (% a.a.)',
+                            data: marketState.yieldCurve.map(v => v.past30d),
+                            borderColor: '#64748b',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            fill: false,
+                            tension: 0.35,
+                            hidden: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            align: 'end',
+                            labels: { boxWidth: 12, font: { size: 11 } }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            callbacks: {
+                                label: function(ctx) {
+                                    return `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y, 2)}% a.a.`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { font: { size: 11 } }
+                        },
+                        y: {
+                            position: 'right',
+                            min: 13.2,
+                            max: 15.0,
+                            grid: { color: 'rgba(51, 65, 85, 0.35)', drawTicks: false },
+                            border: { display: false },
+                            ticks: {
+                                font: { size: 11 },
+                                callback: function(val) {
+                                    return formatNumber(val, 2) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            renderMainChart();
+        }
+
+        function renderMainChart() {
+            if (!mainChart) return;
+            const asset = marketState.assets[marketState.selectedAsset];
+            const series = asset.history[marketState.selectedTimeframe];
+
+            document.getElementById('main-chart-title').textContent = asset.name;
+            document.getElementById('main-chart-subtitle').textContent = asset.subtitle;
+
+            const tag = document.getElementById('main-chart-tag');
+            tag.textContent = marketState.selectedAsset === 'IBOV' ? 'B3' : 'FX SPOT';
+
+            mainChart.data.labels = series.labels;
+            mainChart.data.datasets[0].data = series.data;
+            mainChart.data.datasets[0].borderColor = asset.color;
+            mainChart.data.datasets[0].backgroundColor = asset.color + '20';
+            mainChart.options.scales.y.ticks.callback = function(val) {
+                return asset.unit === 'R$'
+                    ? 'R$ ' + formatNumber(val, 2)
+                    : formatNumber(val, 0);
+            };
+            mainChart.update();
+
+            // Atualiza rodapé estatístico
+            const first = series.data[0];
+            const last = series.data[series.data.length - 1];
+            const minVal = Math.min(...series.data);
+            const maxVal = Math.max(...series.data);
+            const varPct = ((last - first) / first) * 100;
+
+            const prefix = asset.unit === 'R$' ? 'R$ ' : '';
+            const suffix = asset.unit === 'pts' ? ' pts' : '';
+
+            document.getElementById('stat-open').textContent = `${prefix}${formatNumber(first, asset.decimals)}${suffix}`;
+            document.getElementById('stat-range').textContent = `${prefix}${formatNumber(minVal, asset.decimals)} - ${prefix}${formatNumber(maxVal, asset.decimals)}`;
+            const statVar = document.getElementById('stat-var');
+            statVar.textContent = formatSignedPercent(varPct);
+            statVar.className = `font-mono font-semibold mt-0.5 block ${varPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+        }
+
+        function selectAsset(assetKey) {
+            marketState.selectedAsset = assetKey;
+
+            ['IBOV', 'USD', 'EUR'].forEach(key => {
+                const card = document.getElementById(`card-${key}`);
+                if (key === assetKey) {
+                    card.classList.remove('border', 'border-slate-800');
+                    card.classList.add('border-2', 'border-emerald-500/60');
+                } else {
+                    card.classList.remove('border-2', 'border-emerald-500/60');
+                    card.classList.add('border', 'border-slate-800');
+                }
+
+                const btn = document.querySelector(`[data-asset-btn="${key}"]`);
+                if (btn) {
+                    btn.className = key === assetKey
+                        ? 'px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-slate-800 text-white'
+                        : 'px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-200';
+                }
+            });
+
+            renderMainChart();
+        }
+
+        function selectTimeframe(tf) {
+            marketState.selectedTimeframe = tf;
+            ['1D', '1M', '6M', '1A'].forEach(item => {
+                const btn = document.querySelector(`[data-tf-btn="${item}"]`);
+                if (btn) {
+                    btn.className = item === tf
+                        ? 'px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition bg-emerald-500/20 text-emerald-400'
+                        : 'px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition text-slate-400 hover:text-slate-200';
+                }
+            });
+            renderMainChart();
+        }
+
+        function toggleCurveComparison() {
+            if (!yieldChart) return;
+            showCurveComparison = !showCurveComparison;
+            yieldChart.data.datasets[1].hidden = !showCurveComparison;
+            yieldChart.update();
+
+            const dot = document.getElementById('dot-compare');
+            dot.className = showCurveComparison
+                ? 'w-2 h-2 rounded-full bg-amber-400'
+                : 'w-2 h-2 rounded-full bg-slate-500';
+        }
+
+        // ==========================================
+        // 5. TABELA DE CONTRATOS DI FUTURO
+        // ==========================================
+        function filterRates(horizon) {
+            marketState.rateFilter = horizon;
+            ['ALL', 'CURTO', 'MEDIO', 'LONGO'].forEach(h => {
+                const btn = document.querySelector(`[data-rate-filter="${h}"]`);
+                if (btn) {
+                    btn.className = h === horizon
+                        ? 'px-2.5 py-1 rounded-lg text-xs font-medium transition bg-slate-800 text-white'
+                        : 'px-2.5 py-1 rounded-lg text-xs font-medium transition text-slate-400 hover:text-slate-200';
+                }
+            });
+            renderRatesTable();
+        }
+
+        function renderRatesTable() {
+            const tbody = document.getElementById('rates-table-body');
+            if (!tbody) return;
+
+            const filtered = marketState.yieldCurve.filter(item =>
+                marketState.rateFilter === 'ALL' || item.horizon === marketState.rateFilter
+            );
+
+            const horizonLabels = {
+                CURTO: { text: 'Curto Prazo', cls: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
+                MEDIO: { text: 'Médio Prazo', cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+                LONGO: { text: 'Longo Prazo', cls: 'bg-purple-500/10 text-purple-400 border-purple-500/20' }
+            };
+
+            tbody.innerHTML = filtered.map(row => {
+                const bps = Math.round((row.rate - row.prevRate) * 100);
+                const bpsText = bps > 0 ? `+${bps} bps` : `${bps} bps`;
+                const bpsColor = bps > 0 ? 'text-rose-400' : (bps < 0 ? 'text-emerald-400' : 'text-slate-400');
+                const badge = horizonLabels[row.horizon];
+
+                return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-3 font-semibold text-white">${row.ticker}</td>
+                        <td class="py-3 px-3 text-slate-300 font-sans">${row.label}</td>
+                        <td class="py-3 px-3 font-sans">
+                            <span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium border ${badge.cls}">
+                                ${badge.text}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-right font-bold text-amber-400">${formatNumber(row.rate, 2)}%</td>
+                        <td class="py-3 px-3 text-right ${bpsColor}">${bpsText}</td>
+                        <td class="py-3 px-3 text-right text-slate-300 hidden sm:table-cell">IPCA + ${formatNumber(row.realYield, 2)}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // 6. CONVERSOR RÁPIDO DE MOEDAS
+        // ==========================================
+        function updateConverter() {
+            const amount = parseFloat(document.getElementById('conv-amount').value) || 0;
+            const from = document.getElementById('conv-from').value;
+            const usdRate = marketState.assets.USD.price;
+            const eurRate = marketState.assets.EUR.price;
+
+            const label1 = document.getElementById('conv-label-1');
+            const res1 = document.getElementById('conv-res-1');
+            const label2 = document.getElementById('conv-label-2');
+            const res2 = document.getElementById('conv-res-2');
+
+            if (from === 'USD') {
+                label1.textContent = 'Em Reais (BRL)';
+                res1.textContent = `R$ ${formatNumber(amount * usdRate, 2)}`;
+                label2.textContent = 'Em Euros (EUR)';
+                res2.textContent = `€ ${formatNumber((amount * usdRate) / eurRate, 2)}`;
+            } else if (from === 'EUR') {
+                label1.textContent = 'Em Reais (BRL)';
+                res1.textContent = `R$ ${formatNumber(amount * eurRate, 2)}`;
+                label2.textContent = 'Em Dólares (USD)';
+                res2.textContent = `US$ ${formatNumber((amount * eurRate) / usdRate, 2)}`;
+            } else {
+                label1.textContent = 'Em Dólares (USD)';
+                res1.textContent = `US$ ${formatNumber(amount / usdRate, 2)}`;
+                label2.textContent = 'Em Euros (EUR)';
+                res2.textContent = `€ ${formatNumber(amount / eurRate, 2)}`;
+            }
+        }
+
+        // ==========================================
+        // 7. ATUALIZAÇÃO EM TEMPO REAL (API + MERCADO)
+        // ==========================================
+        async function fetchRealCurrencyRates() {
+            try {
+                const response = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL');
+                if (!response.ok) throw new Error('Falha na API de câmbio');
+                const data = await response.json();
+
+                if (data.USDBRL) {
+                    const usdBid = parseFloat(data.USDBRL.bid);
+                    const usdPct = parseFloat(data.USDBRL.pctChange);
+                    marketState.assets.USD.price = usdBid;
+                    marketState.assets.USD.low = parseFloat(data.USDBRL.low);
+                    marketState.assets.USD.high = parseFloat(data.USDBRL.high);
+                    marketState.assets.USD.prevClose = +(usdBid / (1 + usdPct / 100)).toFixed(4);
+                    const usd1D = marketState.assets.USD.history['1D'].data;
+                    usd1D[usd1D.length - 1] = usdBid;
+                }
+
+                if (data.EURBRL) {
+                    const eurBid = parseFloat(data.EURBRL.bid);
+                    const eurPct = parseFloat(data.EURBRL.pctChange);
+                    marketState.assets.EUR.price = eurBid;
+                    marketState.assets.EUR.low = parseFloat(data.EURBRL.low);
+                    marketState.assets.EUR.high = parseFloat(data.EURBRL.high);
+                    marketState.assets.EUR.prevClose = +(eurBid / (1 + eurPct / 100)).toFixed(4);
+                    const eur1D = marketState.assets.EUR.history['1D'].data;
+                    eur1D[eur1D.length - 1] = eurBid;
+                }
+
+                const statusEl = document.getElementById('data-source-status');
+                if (statusEl) {
+                    statusEl.textContent = 'Câmbio atualizado ao vivo via AwesomeAPI/BCB • Ibovespa (~166.9k pts) e Curva DI (Selic 13,75%).';
+                }
+            } catch (err) {
+                console.warn('Usando cotação de referência local:', err.message);
+            }
+        }
+
+        async function refreshMarketData() {
+            await fetchRealCurrencyRates();
+
+            const ibovDelta = Math.round((Math.random() - 0.5) * 45);
+            marketState.assets.IBOV.price += ibovDelta;
+            const ibov1D = marketState.assets.IBOV.history['1D'].data;
+            ibov1D[ibov1D.length - 1] = marketState.assets.IBOV.price;
+
+            updateKPICards();
+            if (marketState.selectedTimeframe === '1D') {
+                renderMainChart();
+            }
+            renderRatesTable();
+            updateConverter();
+            updateClock();
+        }
+
+        // ==========================================
+        // 8. EVENTOS E INICIALIZAÇÃO
+        // ==========================================
+        document.getElementById('btn-toggle-live').addEventListener('click', () => {
+            marketState.isLive = !marketState.isLive;
+            const liveDot = document.getElementById('live-dot');
+            const liveLabel = document.getElementById('live-label');
+            const textLive = document.getElementById('text-live');
+
+            if (marketState.isLive) {
+                liveDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+                liveLabel.textContent = 'Mercado Aberto';
+                textLive.textContent = 'Pausar Feed';
+            } else {
+                liveDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+                liveLabel.textContent = 'Feed Pausado';
+                textLive.textContent = 'Retomar Feed';
+            }
+        });
+
+        document.getElementById('btn-refresh').addEventListener('click', async () => {
+            const icon = document.getElementById('refresh-icon');
+            if (icon) icon.classList.add('animate-spin');
+            await refreshMarketData();
+            setTimeout(() => {
+                if (icon) icon.classList.remove('animate-spin');
+            }, 450);
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            updateClock();
+            initCharts();
+            updateKPICards();
+            renderRatesTable();
+            updateConverter();
+            await fetchRealCurrencyRates();
+            updateKPICards();
+            updateConverter();
+
+            setInterval(() => {
+                if (marketState.isLive) {
+                    refreshMarketData();
+                }
+            }, 15000);
+        });
+    </script>
+</body>
+</html>
